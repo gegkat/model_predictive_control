@@ -65,11 +65,48 @@ Eigen::VectorXd polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals,
   return result;
 }
 
-int main() {
+int main(int argc, char* argv[])
+{
+
+  double ref_v, Kd_delta, Kd_a, Kp_cte, Kp_psi, Kp_v, Kp_delta, Kp_a;
+  if (argc > 1) {
+    Kp_cte = atof(argv[1]);
+    Kp_psi = atof(argv[2]);
+    Kp_v = atof(argv[3]);
+    Kp_delta = atof(argv[4]);
+    Kp_a = atof(argv[5]);
+    Kd_delta = atof(argv[6]);
+    Kd_a = atof(argv[7]);
+    ref_v = atof(argv[8]);
+
+  } else {
+    std::cout << "Using default parameter tunings" << endl;
+    Kp_cte = 5;
+    Kp_psi = 25;
+    Kp_v = 1;
+    Kp_delta = 5;
+    Kp_a = 5;
+    Kd_delta = 20000;
+    Kd_a = 1000;
+    ref_v = 100;
+  }
+
   uWS::Hub h;
 
   // MPC is initialized here!
-  MPC mpc;
+  MPC mpc;  // Initialize the pid variable.
+  mpc.Init(ref_v, Kd_delta, Kd_a, Kp_cte, Kp_psi, Kp_v, Kp_delta, Kp_a);
+  std::cout << " Kp_cte: "    << Kp_cte;
+  std::cout << " Kp_psi: "    << Kp_psi;
+  std::cout << " Kp_v: "      << Kp_v;
+  std::cout << " Kp_delta: "  << Kp_delta;
+  std::cout << " Kp_a: "      << Kp_a;
+  std::cout << " Kd_delta: "  << Kd_delta;
+  std::cout << " Kd_a: "      << Kd_a;
+  std::cout << " ref_v: "      << ref_v;
+  std::cout << std::endl;
+  std::cout << "cte, psi_error, steer, throttle, speed" << std::endl;
+
 
   h.onMessage([&mpc](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
@@ -169,22 +206,35 @@ int main() {
           msgJson["steering_angle"] = steer_value/(25*M_PI/180);
           msgJson["throttle"] = throttle_value;
 
-          msgJson["mpc_x"] = mpc_x_vals;
-          msgJson["mpc_y"] = mpc_y_vals;
+
+
+
 
           //Display the waypoints/reference line
           vector<double> next_x_vals;
           vector<double> next_y_vals;
    
+   
+          int i = 8;
+          while (i < vars.size()) {
+              next_x_vals.push_back(vars[i]);
+              i++;
+              next_y_vals.push_back(vars[i]);
+              i++;
+          }
+          
 
           //.. add (x,y) points to list here, points are in reference to the vehicle's coordinate system
           // the points in the simulator are connected by a Yellow line
     //      next_x_vals.push_back(4.0);
      //     next_y_vals.push_back(-1.0);
 
-          msgJson["next_x"] = next_x_vals;
-          msgJson["next_y"] = next_y_vals;
 
+          msgJson["mpc_x"] = next_x_vals;
+          msgJson["mpc_y"] = next_y_vals;
+
+          msgJson["next_x"] = mpc_x_vals;
+          msgJson["next_y"] = mpc_y_vals;
 
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
           //std::cout << msg << std::endl;
