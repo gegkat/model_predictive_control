@@ -81,14 +81,14 @@ int main(int argc, char* argv[])
 
   } else {
     std::cout << "Using default parameter tunings" << endl;
-    Kp_cte = 5;
-    Kp_psi = 25;
-    Kp_v = 1;
-    Kp_delta = 5;
-    Kp_a = 5;
-    Kd_delta = 20000;
-    Kd_a = 1000;
-    ref_v = 100;
+    Kp_cte = 8;
+    Kp_psi = 8;
+    Kp_v = 10;
+    Kp_delta = 10;
+    Kp_a = 10;
+    Kd_delta = 5;
+    Kd_a = 10;
+    ref_v = 200;
   }
 
   uWS::Hub h;
