@@ -9,10 +9,17 @@
 #include "MPC.h"
 #include "json.hpp"
 
+// Indices in MPC return vector
 size_t steer_idx = 6;
 size_t throttle_idx = steer_idx +1;
 size_t trajectory_start_idx = throttle_idx + 1;
-
+// Time to integrate forward for handling delay in seconds
+// Based on experimentation it works better to make the integration time smaller than the latency time
+const double dt = 0.05; 
+// Used in vehicle model
+const double Lf = 2.67;
+// Time to simulate actuator delay in milliseconds
+const chrono::milliseconds latency = chrono::milliseconds(100);
 
 // for convenience
 using json = nlohmann::json;
@@ -75,6 +82,10 @@ int main(int argc, char* argv[])
   // Command line arguments
   double ref_v, Kd_delta, Kd_a, Kp_cte, Kp_psi, Kp_v, Kp_delta, Kp_a;
   if (argc > 1) {
+    if (argc != 9) {
+      std::cout << "Error: Expected 9 command line inputs, received " << argc << endl;
+      return 0;
+    }
     Kp_cte = atof(argv[1]);
     Kp_psi = atof(argv[2]);
     Kp_v = atof(argv[3]);
@@ -91,7 +102,7 @@ int main(int argc, char* argv[])
     Kp_v = 10;
     Kp_delta = 10;
     Kp_a = 10;
-    Kd_delta = 5;
+    Kd_delta = 0.7;
     Kd_a = 10;
     ref_v = 200;
   }
@@ -111,7 +122,6 @@ int main(int argc, char* argv[])
   std::cout << " ref_v: "      << ref_v;
   std::cout << std::endl;
   std::cout << "cte, psi_error, steer, throttle, speed" << std::endl;
-
 
   h.onMessage([&mpc](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
@@ -180,19 +190,12 @@ int main(int argc, char* argv[])
           double psi_error = -atan(coeffs[1]);
 
           // Propagate forward by the delay
-          /*
-      fg[1 + x_start + t] = x1 - (x0 + v0 * CppAD::cos(psi0) * dt);
-      fg[1 + y_start + t] = y1 - (y0 + v0 * CppAD::sin(psi0) * dt);
-      fg[1 + psi_start + t] = psi1 - (psi0 - v0 * delta0 / Lf * dt); // sign flip
-      fg[1 + v_start + t] = v1 - (v0 + a0 * dt);
-      fg[1 + cte_start + t] =
-          cte1 - ((f0 - y0) + (v0 * CppAD::sin(epsi0) * dt));
-      fg[1 + epsi_start + t] =
-          epsi1 - ((psi0 - psides0) - v0 * delta0 / Lf * dt); // sign flip
-*/
-
-          double dt = 0.1;
-          const double Lf = 2.67;
+          // x_[t] = x[t-1] + v[t-1] * cos(psi[t-1]) * dt
+          // y_[t] = y[t-1] + v[t-1] * sin(psi[t-1]) * dt
+          // psi_[t] = psi[t-1] + v[t-1] / Lf * delta[t-1] * dt
+          // v_[t] = v[t-1] + a[t-1] * dt
+          // cte[t] = f(x[t-1]) - y[t-1] + v[t-1] * sin(epsi[t-1]) * dt
+          // epsi[t] = psi[t] - psides[t-1] + v[t-1] * delta[t-1] / Lf * dt
           double x = v*cos(psi_error)*dt;
           double y = v*sin(psi_error)*dt;
           double next_psi = - v * prev_steer / Lf * dt;
@@ -217,8 +220,7 @@ int main(int argc, char* argv[])
           msgJson["throttle"] = throttle_value;
 
           // Output for plotting in python
-          //std::cout << cte << ", " << rad2deg(psi_error) << ", " << steer_value << ", " << throttle_value << ", " << v << endl;
-          std::cout << prev_steer << ", " << steer_value << ", " << throttle_value << ", " << prev_throttle << endl;
+          std::cout << cte << ", " << rad2deg(psi_error) << ", " << steer_value << ", " << throttle_value << ", " << v << endl;
 
           // Get the MPC predicted trajectory for display
           vector<double> mpc_x_vals;
@@ -247,7 +249,7 @@ int main(int argc, char* argv[])
           //
           // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
           // SUBMITTING.
-          this_thread::sleep_for(chrono::milliseconds(100));
+          this_thread::sleep_for(latency);
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
         }
       } else {

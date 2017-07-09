@@ -8,7 +8,7 @@ using CppAD::AD;
 // Set the number of iterations to propagate 
 size_t N = 10;
 // Time step between integration steps
-double dt = 0.1;
+const double dt = 0.1;
 // # of state variables
 size_t n_state = 6;
 // # of actuator variables
@@ -25,9 +25,6 @@ size_t n_actuators = 2;
 //
 // This is the length from front to CoG that has a similar radius.
 const double Lf = 2.67;
-
-// Desired reference speed
-//double ref_v = 100;
 
 // Indices for vars 
 // state vars: [x,y,ψ,v,cte,eψ]
