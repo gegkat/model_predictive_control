@@ -132,9 +132,11 @@ int main(int argc, char* argv[])
           double py = j[1]["y"];
           double psi = j[1]["psi"];
           double v = j[1]["speed"];
-          //double prev_steer
-          //double prev_throttle
+          double prev_steer = j[1]["steering_angle"];
+          double prev_throttle = j[1]["throttle"];
 
+          prev_steer *= deg2rad(25);
+          prev_throttle = prev_throttle*2-1;
 
           /*
           * Calculate steering angle and throttle using MPC.
@@ -177,9 +179,31 @@ int main(int argc, char* argv[])
           // Psi error is the derivative of the polynomial evaluate at x = 0
           double psi_error = -atan(coeffs[1]);
 
+          // Propagate forward by the delay
+          /*
+      fg[1 + x_start + t] = x1 - (x0 + v0 * CppAD::cos(psi0) * dt);
+      fg[1 + y_start + t] = y1 - (y0 + v0 * CppAD::sin(psi0) * dt);
+      fg[1 + psi_start + t] = psi1 - (psi0 - v0 * delta0 / Lf * dt); // sign flip
+      fg[1 + v_start + t] = v1 - (v0 + a0 * dt);
+      fg[1 + cte_start + t] =
+          cte1 - ((f0 - y0) + (v0 * CppAD::sin(epsi0) * dt));
+      fg[1 + epsi_start + t] =
+          epsi1 - ((psi0 - psides0) - v0 * delta0 / Lf * dt); // sign flip
+*/
+
+          double dt = 0.1;
+          const double Lf = 2.67;
+          double x = v*cos(psi_error)*dt;
+          double y = v*sin(psi_error)*dt;
+          double next_psi = - v * prev_steer / Lf * dt;
+          double next_v = v + prev_throttle * dt;
+          double next_cte = cte + v*sin(psi_error)*dt;
+          double next_psi_error = psi_error - v * prev_steer / Lf * dt;
+
           // Define the state in the body coordinate frame, x, y, psi are 0
           Eigen::VectorXd state(6);
-          state << 0, 0, 0, v, cte, psi_error;
+          //state << 0, 0, 0, v, cte, psi_error;
+          state << x, y, next_psi, next_v, next_cte, next_psi_error;
 
           // Use mpc object to solve for actuator commands
           auto vars = mpc.Solve(state, coeffs);
@@ -193,7 +217,8 @@ int main(int argc, char* argv[])
           msgJson["throttle"] = throttle_value;
 
           // Output for plotting in python
-          std::cout << cte << ", " << rad2deg(psi_error) << ", " << steer_value << ", " << throttle_value << ", " << v << endl;
+          //std::cout << cte << ", " << rad2deg(psi_error) << ", " << steer_value << ", " << throttle_value << ", " << v << endl;
+          std::cout << prev_steer << ", " << steer_value << ", " << throttle_value << ", " << prev_throttle << endl;
 
           // Get the MPC predicted trajectory for display
           vector<double> mpc_x_vals;
