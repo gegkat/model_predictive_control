@@ -9,6 +9,7 @@ using namespace std;
 class MPC {
  public:
 
+  // Tunable parameters set in by Init
   double ref_v;
   double Kd_delta;
   double Kd_a;
@@ -24,7 +25,7 @@ class MPC {
   /*
   * Initialize MPC.
   */
-void Init(double ref_v_, double Kd_delta_, double Kd_a_, double Kp_cte_, 
+  void Init(double ref_v_, double Kd_delta_, double Kd_a_, double Kp_cte_, 
   double Kp_psi_, double Kp_v_, double Kp_a_, double Kp_delta_);
 
 
